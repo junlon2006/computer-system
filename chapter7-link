@@ -1,0 +1,76 @@
+1、link概念
+链接是将各种代码和数据片段收集并合并为一个单文件的过程，这个文件可被加载到内存并执行
+gcc -v 打开编译过程输出选项
+
+2、可重定位目标文件
+ELF头可重定位目标文件包含的节
+.text 已编译程序的机器代码
+.rodata 只读数据
+.data 已初始化的全局和静态变量（非0），局部变量保存在栈中，即不在.data也不在.bss
+.bss 未初始化的全局和静态变量，以及被初始化为0的全局和静态变量，不占实际的空间，只是一个占位符
+     未初始化变量不需要任何磁盘空间，运行时，在内存中分配变量，初始化为0
+.symtab 符号表，存放定义和引用的函数和全局变量，不包含局部变量（可通过strip去掉，以节省磁盘空间）
+
+3、静态变量
+静态局部变量不在栈中管理，编译器在.data和.bss中分配空间，并创建唯一的名字的本地链接符号
+static等同于C++、Java的private
+
+4、多重定义的全局符号的解析规则
+编译器向汇编器输出每个全局符号，要么是强符号（strong）要么是弱符号（weak）
+函数和已经初始化的全局变量为强符号，未初始化的变量为弱符号
+规则1：不允许有多个同名的强符号
+规则2：如果有一个强符号和多个弱符号，那么选择强符号
+规则3：如果有多个弱符号，那么从弱符号中任意选一个
+对于同名但类型不同的全局变量（只能有一个强符号）运行时的错误将非常难以预测
+ELF定义了32种不同的重定位类型，其中常见的两个为
+R_X86_64_PC32：重定位一个使用32位pc相对地址的引用（用当前PC值加上偏移量）
+R_X86_64_32：重定位一个使用32位绝对地址的引用（直接用绝对地址）
+如fun1.c和fun2.c
+gcc -c fun2.c
+objdump -dx fun2.o
+0000000000000000 <main>:
+   0:	55                   	push   %rbp
+   1:	48 89 e5             	mov    %rsp,%rbp
+   4:	b8 00 00 00 00       	mov    $0x0,%eax
+   9:	e8 00 00 00 00       	callq  e <main+0xe>
+			a: R_X86_64_PC32	fun-0x4
+   e:	8b 05 00 00 00 00    	mov    0x0(%rip),%eax        # 14 <main+0x14>
+			10: R_X86_64_PC32	f-0x4 //相对地址
+  14:	89 c2                	mov    %eax,%edx
+  16:	be 00 00 00 00       	mov    $0x0,%esi
+			17: R_X86_64_32	f   //绝对地址
+  1b:	bf 00 00 00 00       	mov    $0x0,%edi
+			1c: R_X86_64_32	.rodata
+  20:	b8 00 00 00 00       	mov    $0x0,%eax
+  25:	e8 00 00 00 00       	callq  2a <main+0x2a>
+			26: R_X86_64_PC32	printf-0x4
+  2a:	b8 00 00 00 00       	mov    $0x0,%eax
+  2f:	5d                   	pop    %rbp
+  30:	c3                   	retq   
+
+  5、可执行文件
+  Linux x86-64代码段总是从地址0x400000开始向高地址增长
+
+  6、共享库
+  通过dlopen、dlsym、dlclose等系统函数加载
+  Java中的JNI也是通过Java解释器利用dlopen接口动态加载动态库中的API
+  共享库的目的是允许多个正在运行的进程共享内存中相同的代码库，从而节约内存
+  fpic位置无关代码
+  GOT(global offset table) PLT(procedure linkable table)
+
+7、库打桩
+编译时打桩
+gcc -c mymalloc.c
+gcc -I. -o main main.c mymalloc.o
+
+链接时打桩
+Linux静态链接器支持--wrap f标志进行链接时打桩。标志告诉编译器把符号f的引用解析成__wrap_f，把__real_f的引用解析成f
+gcc -c mymalloc.c
+gcc -c main.c
+gcc -Wl,--wrap,malloc -Wl,--wrap,free -o test main.o mymalloc.o
+https://stackoverflow.com/questions/46444052/how-to-wrap-functions-with-the-wrap-option-correctly
+
+运行时打桩
+dlsym
+
+
