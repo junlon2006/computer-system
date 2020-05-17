@@ -73,4 +73,11 @@ https://stackoverflow.com/questions/46444052/how-to-wrap-functions-with-the-wrap
 运行时打桩
 dlsym
 
-
+8、工具
+AR：静态库
+STRINGS：列出目标文件所有字符串
+STRIP：删除符号表
+NM：获取符号表
+SIZE：获取节名字和大小
+LDD：列出共享库
+READELF：打印可执行目标文件完整结构
